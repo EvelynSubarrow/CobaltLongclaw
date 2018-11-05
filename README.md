@@ -1,5 +1,7 @@
 # CobaltLongclaw
-A event-driven python3 IRC bot, capable of maintaining hundreds of simultaneous connections through Tor or a list of SOCKS proxies
+A event-driven python3 IRC bot, capable of maintaining hundreds of simultaneous connections through Tor or a list of SOCKS proxies,
+with an interactive IPython shell for manipulation.
+
 CobaltLongclaw's event system is derived from that of [Bitbot](https://github.com/jesopo/bitbot), the primary difference being the
 use of '/' as a separator for events
 
