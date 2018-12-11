@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import argparse, random, select, string, subprocess, time, threading, sys, socket
+import argparse, random, select, string, subprocess, time, threading, sys
+import socket, resource
 import logging
 
 import socks, stem, stem.control
@@ -271,8 +272,9 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--use-tor", action="store_true", default=True)
     parser.add_argument("-p", "--proxy-list", help="List of SOCKS proxies to use")
 
-
     args = parser.parse_args()
+
+    resource.setrlimit(resource.RLIMIT_NOFILE, (2000, 3000))
 
     proxies = []
     if args.proxy_list:
