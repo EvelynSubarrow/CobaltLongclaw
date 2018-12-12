@@ -4,7 +4,7 @@ import argparse, random, select, string, subprocess, time, threading, sys
 import socket, resource
 import logging
 
-import socks, stem, stem.control
+import sockschain as socks, stem, stem.control
 
 from IPython.terminal.embed import InteractiveShellEmbed
 import IPython
@@ -72,7 +72,7 @@ def new_circuit(tor_password, tor_port):
 
 def new_socket(protocol="5", host="localhost", port=9050):
     s = socks.socksocket()
-    s.set_proxy({"5": socks.SOCKS5, "4": socks.SOCKS4, "H": socks.HTTP}[protocol], host, port)
+    s.setproxy({"5": socks.PROXY_TYPE_SOCKS5, "4": socks.PROXY_TYPE_SOCKS4, "H": socks.PROXY_TYPE_HTTP}[protocol], host, port)
     s.settimeout(2.5)
     log_message("proxy", "SOCKS {} {}:{}".format(protocol, host, port))
     return s
@@ -233,14 +233,14 @@ class ClientFactory(object):
                         else:
                             log_message("proxy", "SOCKS proxy list exhausted", "error")
                 for socket in sockets:
-                    try:
-                        socket.connect((self.host, self.port))
-                    except socks.ProxyError as e:
-                        log_message("proxy", "SOCKS problem of some sort", "error")
-                        continue
-                    except Exception as e:
-                        log_message("proxy", "Other socket issue", "error")
-                        continue
+                    #try:
+                    socket.connect((self.host, self.port))
+                    #except socks.ProxyError as e:
+                    #    log_message("proxy", "SOCKS problem of some sort", "error")
+                    #    continue
+                    #except Exception as e:
+                    #    log_message("proxy", "Other socket issue", "error")
+                    #    continue
                     bot = Bot(socket, *self.identity_provider.new_identity())
                     bot.identify()
                     self.connection_count += 1

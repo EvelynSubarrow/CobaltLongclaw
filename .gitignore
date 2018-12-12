@@ -1,5 +1,5 @@
 *.txt
 *.log
-__*
+__pycache__
 
 !/requirements.txt
