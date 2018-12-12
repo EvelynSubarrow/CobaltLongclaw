@@ -659,7 +659,7 @@ class socksocket(socket.socket):
                 # Resolve remotely
                 ipaddr = None
                 req = req + (chr(0x03).encode() +
-                             chr(len(destaddr)).encode() + destaddr)
+                             chr(len(destaddr)).encode() + destaddr.encode())
             else:
                 # Resolve locally
                 ipaddr = socket.inet_aton(socket.gethostbyname(destaddr))
