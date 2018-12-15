@@ -233,14 +233,14 @@ class ClientFactory(object):
                         else:
                             log_message("proxy", "SOCKS proxy list exhausted", "error")
                 for socket in sockets:
-                    #try:
-                    socket.connect((self.host, self.port))
-                    #except socks.ProxyError as e:
-                    #    log_message("proxy", "SOCKS problem of some sort", "error")
-                    #    continue
-                    #except Exception as e:
-                    #    log_message("proxy", "Other socket issue", "error")
-                    #    continue
+                    try:
+                        socket.connect((self.host, self.port))
+                    except socks.ProxyError as e:
+                        log_message("proxy", "SOCKS problem of some sort", "error")
+                        continue
+                    except Exception as e:
+                        log_message("proxy", "Other socket issue", "error")
+                        continue
                     bot = Bot(socket, *self.identity_provider.new_identity())
                     bot.identify()
                     self.connection_count += 1
