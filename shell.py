@@ -70,11 +70,12 @@ def new_circuit(tor_password, tor_port):
         controller.authenticate(tor_password)
         controller.signal(stem.Signal.NEWNYM)
 
-def new_socket(protocol="5", host="localhost", port=9050):
+def new_socket(proxies):
     s = socks.socksocket()
-    s.setproxy({"5": socks.PROXY_TYPE_SOCKS5, "4": socks.PROXY_TYPE_SOCKS4, "H": socks.PROXY_TYPE_HTTP}[protocol], host, port)
+    for protocol, host, port in proxies:
+        s.addproxy({"5": socks.PROXY_TYPE_SOCKS5, "4": socks.PROXY_TYPE_SOCKS4, "H": socks.PROXY_TYPE_HTTP}[protocol], host, port)
     s.settimeout(2.5)
-    log_message("proxy", "SOCKS {} {}:{}".format(protocol, host, port))
+    log_message("proxy", " -> ".join(["{} {}:{}".format(protocol, host, port) for protocol,host,port in proxies]))
     return s
 
 # List of characters, minimum bound, maximum bound (inclusive)
@@ -225,18 +226,20 @@ class ClientFactory(object):
                     new_circuit(self.tor_password, self.tor_port)
                 sockets = []
                 for n in range(count):
+                    chain_list = []
                     if self.use_tor:
-                        sockets.append(new_socket())
+                        chain_list.append(("5", "localhost", 9050))
+                    if self.proxies:
+                        chain_list.append(proxies.pop())
+                    if chain_list:
+                        sockets.append(new_socket(chain_list))
                     else:
-                        if self.proxies:
-                            sockets.append(new_socket(*proxies.pop()))
-                        else:
-                            log_message("proxy", "SOCKS proxy list exhausted", "error")
+                        log_message("proxy", "All proxy chain options exhausted", "error")
                 for socket in sockets:
                     try:
                         socket.connect((self.host, self.port))
-                    except socks.ProxyError as e:
-                        log_message("proxy", "SOCKS problem of some sort", "error")
+                    except (socks.Socks4Error, socks.Socks5Error, socks.Socks5AuthError) as e:
+                        log_message("proxy", type(e).__name__ + " " + e.args[0][1], "error")
                         continue
                     except Exception as e:
                         log_message("proxy", "Other socket issue", "error")
