@@ -200,7 +200,7 @@ class BotManager(object):
 
 class ClientFactory(object):
     def __init__(self, host, port, bot_count, tor_password,
-            tor_port, proxies, use_tor=True, circuit_cycle=1):
+            tor_port, proxies, use_tor=True, circuit_cycle=1, min_chain_len=1):
         self.bot_manager = BotManager()
         self.host = host
         self.port = port
@@ -214,6 +214,7 @@ class ClientFactory(object):
         self.proxies = proxies
         self.circuit_cycle = circuit_cycle
         self.identity_provider = RandomIdentityProvider()
+        self.minimum_chain_length = min_chain_len
 
     def run(self):
         log_message("proxy", "ClientFactory thread started")
@@ -231,11 +232,11 @@ class ClientFactory(object):
                         chain_list.append(("5", "localhost", 9050))
                     if self.proxies:
                         chain_list.append(proxies.pop())
-                    if chain_list:
-                        sockets.append(new_socket(chain_list))
+                    if len(chain_list)>=self.minimum_chain_length:
+                        sockets.append((new_socket(chain_list), chain_list[-1][0]))
                     else:
                         log_message("proxy", "All proxy chain options exhausted", "error")
-                for socket in sockets:
+                for socket, proxy_alias in sockets:
                     try:
                         socket.connect((self.host, self.port))
                     except (socks.Socks4Error, socks.Socks5Error, socks.Socks5AuthError) as e:
@@ -275,6 +276,7 @@ if __name__ == "__main__":
         "Tor's control port", default=9051)
     parser.add_argument("-t", "--use-tor", action="store_true", default=True)
     parser.add_argument("-p", "--proxy-list", help="List of SOCKS/HTTP proxies to use")
+    parser.add_argument("-m", "--minimum-chain-length", help="Treat proxies as exhausted below this count", default=1, type=int)
     parser.add_argument("-tc", "--tor-circuit-cycle", type=int,
         help="Cycle Tor exit after n connections", default=1)
 
@@ -287,7 +289,7 @@ if __name__ == "__main__":
         proxies = read_proxy_list(args.proxy_list)
 
     client_factory = ClientFactory(args.host, args.port,
-        args.bot_count, args.tor_password, args.tor_port, proxies, args.use_tor, args.tor_circuit_cycle)
+        args.bot_count, args.tor_password, args.tor_port, proxies, args.use_tor, args.tor_circuit_cycle, args.minimum_chain_length)
 
     bot_manager = client_factory.bot_manager
 
