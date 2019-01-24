@@ -913,7 +913,7 @@ class socksocket(socket.socket):
             addr = socket.gethostbyname(destaddr)
         else:
             addr = destaddr
-        command_str = ("echo START ; telnet " + addr + " " + str(destport) + " ; echo END\n").encode()
+        command_str = ("echo START ; telnet " + addr + " " + str(destport) + " ; echo END ; exit\n").encode()
         self.__sock.sendall(command_str)
         # Very lazy way to avoid the issue of a shell echoing the command back
         resp = self.__recvall(1)
