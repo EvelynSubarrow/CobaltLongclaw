@@ -73,7 +73,7 @@ def new_circuit(tor_password, tor_port):
 def new_socket(proxies):
     s = socks.socksocket()
     for protocol, host, port in proxies:
-        s.addproxy({"5": socks.PROXY_TYPE_SOCKS5, "4": socks.PROXY_TYPE_SOCKS4, "H": socks.PROXY_TYPE_HTTP}[protocol], host, port)
+        s.addproxy({"5": socks.PROXY_TYPE_SOCKS5, "4": socks.PROXY_TYPE_SOCKS4, "H": socks.PROXY_TYPE_HTTP, "T": socks.PROXY_TYPE_TELNET}[protocol], host, port)
     s.settimeout(2.5)
     log_message("proxy", " -> ".join(["{} {}:{}".format(protocol, host, port) for protocol,host,port in proxies]))
     return s
@@ -160,6 +160,16 @@ class BotManager(object):
     def parse_line(self, line, bot):
         if not line:
             return
+
+        # Some telnet shells like to echo everything back.
+        # Fortunately, IRCDs will not return your prefix
+        if line.startswith(":{} ".format(bot.prefix)): return
+        # Getting an END means this is a telnet connection,
+        # and one that's dead
+        if line == "END":
+            bot.socket.close()
+            return
+
         original_line = line
         prefix, final = None, None
         if line[0] == ":":
@@ -246,9 +256,14 @@ class ClientFactory(object):
                         log_message("proxy", "Other socket issue", "error")
                         continue
                     bot = Bot(socket, *self.identity_provider.new_identity())
+
+                    # Everything needs a prefix if this is in fact a telnet connection
+                    bot.use_prefix = proxy_alias == "T"
+
                     bot.identify()
-                    self.connection_count += 1
                     self.bot_manager.add_bot(bot)
+                    self.connection_count += 1
+
                 time.sleep(5)
             else:
                 time.sleep(1)

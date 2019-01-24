@@ -1,4 +1,4 @@
-import time
+import time, random, string
 
 class Bot(object):
     def __init__(self, s, nickname, username, realname):
@@ -12,12 +12,16 @@ class Bot(object):
         self.ping_sent = False
         self._channels = []
         self.last_status = 0
+        self.prefix = "".join([random.choice(string.ascii_uppercase) for n in range(4)])
+        self.use_prefix = True
 
     def fileno(self):
         return self.socket.fileno()
 
     def queue_send(self, data):
         encoded_data = data.encode("utf8")
+        if self.use_prefix:
+            self.write_buffer += ":{} ".format(self.prefix).encode("utf8")
         self.write_buffer += encoded_data + b"\r\n"
 
     def send(self):
