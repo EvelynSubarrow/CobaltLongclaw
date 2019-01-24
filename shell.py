@@ -18,7 +18,7 @@ IRC_COLORS = ["02", "03", "04", "05", "06", "07", "08", "09",
     "10", "11", "12", "13"]
 
 def read_proxy_list(filename):
-    with open("proxy_list.txt") as f:
+    with open(filename) as f:
         plist = [line.split() for line in f.read().split("\n")]
         proxies = set()
         for line in plist:
