@@ -48,7 +48,7 @@ mainly to merge bug fixes found in Sourceforge
 
 import base64, errno, os, socket, sys, select, struct, threading
 DEBUG = False
-#def DEBUG(foo): print foo
+#def DEBUG(foo): print (foo)
 
 
 ##[ SSL compatibility code ]##################################################
@@ -284,6 +284,7 @@ PROXY_TYPE_TOR = 7
 PROXY_TYPE_HTTPS = 8
 PROXY_TYPE_HTTP_CONNECT = 9
 PROXY_TYPE_HTTPS_CONNECT = 10
+PROXY_TYPE_TELNET = 11
 
 PROXY_SSL_TYPES = (PROXY_TYPE_SSL, PROXY_TYPE_SSL_WEAK,
                    PROXY_TYPE_SSL_ANON, PROXY_TYPE_HTTPS,
@@ -299,6 +300,7 @@ PROXY_DEFAULTS = {
     PROXY_TYPE_SOCKS4: 1080,
     PROXY_TYPE_SOCKS5: 1080,
     PROXY_TYPE_TOR: 9050,
+    PROXY_TYPE_TELNET: 23,
 }
 PROXY_TYPES = {
   'none': PROXY_TYPE_NONE,
@@ -311,6 +313,7 @@ PROXY_TYPES = {
   'socks4a': PROXY_TYPE_SOCKS4,
   'socks5': PROXY_TYPE_SOCKS5,
   'tor': PROXY_TYPE_TOR,
+  'telnet': PROXY_TYPE_TELNET,
 }
 
 if HAVE_SSL:
@@ -901,6 +904,24 @@ class socksocket(socket.socket):
         self.__proxysockname = ("0.0.0.0", 0)
         self.__proxypeername = (addr, destport)
 
+    def __negotiatetelnet(self, destaddr, destport, proxy):
+        """__negotiatetelnetconnect(self, destaddr, destport, proxy)
+        Negotiates telnet through an open telnet server.
+        """
+        # If we need to resolve locally, we do this now
+        if not proxy[P_RDNS]:
+            addr = socket.gethostbyname(destaddr)
+        else:
+            addr = destaddr
+        command_str = ("echo START ; telnet " + addr + " " + str(destport) + " ; echo END\n").encode()
+        self.__sock.sendall(command_str)
+        # Very lazy way to avoid the issue of a shell echoing the command back
+        resp = self.__recvall(1)
+        while (resp.find(b"START\r\n") == -1 and
+               resp.find(command_str + b"START\n") == -1):
+            resp = resp + self.__recvall(1)
+        # There's not any particularly straightforward way to test the connection, so we'll just vaguely assume it's working
+
     def __get_ca_certs(self):
         return TLS_CA_CERTS
 
@@ -1038,6 +1059,10 @@ class socksocket(socket.socket):
                 elif proxy[P_TYPE] == PROXY_TYPE_SOCKS4:
                     if DEBUG: DEBUG('*** SOCKS4: %s' % (nexthop, ))
                     self.__negotiatesocks4(nexthop[0], nexthop[1], proxy)
+
+                elif proxy[P_TYPE] == PROXY_TYPE_TELNET:
+                    if DEBUG: DEBUG('*** TELNET: %s' % (nexthop, ))
+                    self.__negotiatetelnet(nexthop[0], nexthop[1], proxy)
 
                 elif proxy[P_TYPE] == PROXY_TYPE_NONE:
                     if first and nexthop[0] and nexthop[1]:
