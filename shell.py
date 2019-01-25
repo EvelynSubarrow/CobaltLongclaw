@@ -131,29 +131,38 @@ class BotManager(object):
                 if event & select.EPOLLIN:
                     lines = bot.read()
                     if not lines:
+                        log_message("bots", "Removing for empty select")
                         self.remove_bot(bot)
                     else:
                         for line in lines:
-                            self.parse_line(line, bot)
+                            # If this isn't None, the connection is effectively dead
+                            quit_status = self.parse_line(line, bot)
+                            if quit_status:
+                                log_message("bots", "Removing for END")
+                                self.remove_bot(bot)
+                                continue
+
                 elif event & select.EPOLLOUT:
                     bot.send()
                     self.poll.modify(bot.fileno(),
                         select.EPOLLIN)
+
                 elif event & select.EPOLLHUP:
+                    log_message("bots", "Removing for hangup")
                     self.remove_bot(bot)
 
             for bot in list(self.bots.values()):
                 since_last_read = (
                     None if not bot.last_read else time.time(
                     )-bot.last_read)
-                removed = False
                 if since_last_read:
                     if since_last_read > 120:
+                        log_message("bots", "Removing for presumed timeout")
                         self.remove_bot(bot)
-                        removed = True
+                        continue
                     elif since_last_read > 30 and not bot.ping_sent:
                         bot.send_ping()
-                if not removed and bot.waiting_send():
+                if bot.waiting_send():
                     self.poll.modify(bot.fileno(),
                         select.EPOLLIN|select.EPOLLOUT)
 
@@ -164,11 +173,13 @@ class BotManager(object):
         # Some telnet shells like to echo everything back.
         # Fortunately, IRCDs will not return your prefix
         if line.startswith(":{} ".format(bot.prefix)): return
-        # Getting an END means this is a telnet connection,
-        # and one that's dead
+
+        log_message("raw", line, "info")
+
+        # Getting an END means this is a dead telnet connection,
+        # so it should be closed at the earliest opportunity
         if line == "END":
-            bot.socket.close()
-            return
+            return True
 
         original_line = line
         prefix, final = None, None
@@ -195,6 +206,7 @@ class BotManager(object):
     def remove_bot(self, bot):
         self.poll.unregister(bot.fileno())
         del self.bots[bot.fileno()]
+        bot.socket.close()
 
     def __len__(self):
         return len(self.bots)
